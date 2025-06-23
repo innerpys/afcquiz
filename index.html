@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>아스날 선수 퀴즈 ⚽🔴</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #fff5f5;
+      color: #800000;
+      max-width: 100%;
+      margin: auto;
+      padding: 20px;
+      border: 2px solid #c00000;
+      border-radius: 10px;
+      box-sizing: border-box;
+    }
+    h1 {
+      text-align: center;
+      color: #c00000;
+      font-size: 1.5em;
+    }
+    .question {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    .result {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .arsenal-logo {
+      display: block;
+      margin: 0 auto 20px;
+      width: 80px;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 1em;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <img src="https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg" alt="Arsenal Logo" class="arsenal-logo" />
+  <h1>아스날 선수 퀴즈 ⚽🔴</h1>
+  <div>
+    <label for="quizType">문제 유형 선택:</label>
+    <select id="quizType">
+      <option value="number">등번호 맞추기</option>
+      <option value="name-info">이름 맞추기 (정보 보고)</option>
+      <option value="name-last">이름 맞추기 (성만 보고)</option>
+      <option value="nation">국적 맞추기</option>
+      <option value="position">포지션 맞추기</option>
+      <option value="english-name">영어 스펠링 맞추기</option>
+    </select>
+    <button onclick="generateQuestion()">문제 생성</button>
+  </div>
+
+  <div class="question" id="questionArea"></div>
+  <div>
+    <input type="text" id="answerInput" placeholder="정답 입력" />
+    <button onclick="checkAnswer()">정답 확인</button>
+  </div>
+  <div class="result" id="result"></div>
+
+  <!-- 효과음 -->
+  <audio id="correctSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" preload="auto"></audio>
+  <audio id="wrongSound" src="https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg" preload="auto"></audio>
+
+  <script>
+    const normalize = (str) =>
+      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+    const players = [
+      { number: 1, name: "다비드 라야", nation: "스페인", position: "골키퍼", en: "David Raya" },
+      { number: 32, name: "네투", nation: "브라질", position: "골키퍼", en: "Neto" },
+      { number: 2, name: "윌리엄 살리바", nation: "프랑스", position: "수비", en: "William Saliba" },
+      { number: 3, name: "키어런 티어니", nation: "스코틀랜드", position: "수비", en: "Kieran Tierney" },
+      { number: 4, name: "벤 화이트", nation: "잉글랜드", position: "수비", en: "Ben White" },
+      { number: 6, name: "가브리엘 마갈량이스", nation: "브라질", position: "수비", en: "Gabriel Magalhaes" },
+      { number: 12, name: "위리엔 팀버", nation: "네덜란드", position: "수비", en: "Jurrien Timber" },
+      { number: 15, name: "야쿱 키비오르", nation: "폴란드", position: "수비", en: "Jakub Kiwior" },
+      { number: 17, name: "올렉산드르 진첸코", nation: "우크라이나", position: "수비", en: "Oleksandr Zinchenko" },
+      { number: 18, name: "다케히로 토미야스", nation: "일본", position: "수비", en: "Takehiro Tomiyasu" },
+      { number: 33, name: "리카르도 칼라피오리", nation: "이탈리아", position: "수비", en: "Riccardo Calafiori" },
+      { number: 5, name: "토마스 파티", nation: "가나", position: "미드필더", en: "Thomas Partey" },
+      { number: 8, name: "마틴 외데고르", nation: "노르웨이", position: "미드필더", en: "Martin Odegaard" },
+      { number: 23, name: "미켈 메리노", nation: "스페인", position: "미드필더", en: "Mikel Merino" },
+      { number: 41, name: "데클란 라이스", nation: "잉글랜드", position: "미드필더", en: "Declan Rice" },
+      { number: 7, name: "부카요 사카", nation: "잉글랜드", position: "공격", en: "Bukayo Saka" },
+      { number: 9, name: "가브리엘 제주스", nation: "브라질", position: "공격", en: "Gabriel Jesus" },
+      { number: 11, name: "가브리엘 마르티넬리", nation: "브라질", position: "공격", en: "Gabriel Martinelli" },
+      { number: 19, name: "레안드로 트로사르", nation: "벨기에", position: "공격", en: "Leandro Trossard" },
+      { number: 29, name: "카이 하베르츠", nation: "독일", position: "공격", en: "Kai Havertz" },
+      { number: 30, name: "라힘 스털링", nation: "잉글랜드", position: "공격", en: "Raheem Sterling" },
+    ];
+
+    let currentPlayer = null;
+    let currentQuiz = "";
+
+    function getLastName(name) {
+      const parts = name.split(" ");
+      return parts.length > 1 ? parts[parts.length - 1] : name;
+    }
+
+    function generateQuestion() {
+      const type = document.getElementById("quizType").value;
+      currentPlayer = players[Math.floor(Math.random() * players.length)];
+      currentQuiz = type;
+      const qArea = document.getElementById("questionArea");
+      document.getElementById("result").textContent = "";
+
+      switch (type) {
+        case "number":
+          qArea.textContent = `${currentPlayer.name} 선수의 등번호는?`;
+          break;
+        case "name-info":
+          qArea.textContent = `등번호 ${currentPlayer.number}, 포지션 ${currentPlayer.position}, 국적 ${currentPlayer.nation} → 이름은?`;
+          break;
+        case "name-last":
+          qArea.textContent = `성 '${getLastName(currentPlayer.name)}' → 풀네임은?`;
+          break;
+        case "nation":
+          qArea.textContent = `${currentPlayer.name} 선수의 국적은?`;
+          break;
+        case "position":
+          qArea.textContent = `${currentPlayer.name} 선수의 포지션은? (보기: 공격, 수비, 미드필더, 골키퍼)`;
+          break;
+        case "english-name":
+          qArea.textContent = `${currentPlayer.name} 선수의 영어 이름은?`;
+          break;
+      }
+    }
+
+    function checkAnswer() {
+      const input = document.getElementById("answerInput").value.trim();
+      const lowerInput = normalize(input);
+      const lastName = getLastName(currentPlayer.name);
+      const lowerLast = normalize(lastName);
+      const lowerFull = normalize(currentPlayer.name);
+      const lowerEn = normalize(currentPlayer.en);
+
+      let correct = false;
+
+      switch (currentQuiz) {
+        case "number":
+          correct = input === String(currentPlayer.number);
+          break;
+        case "name-info":
+          correct = lowerInput === lowerFull || lowerInput === lowerLast;
+          break;
+        case "name-last":
+          correct = lowerInput === lowerFull;
+          break;
+        case "nation":
+          correct = lowerInput === normalize(currentPlayer.nation) || lowerInput === lowerLast;
+          break;
+        case "position":
+          correct = lowerInput === normalize(currentPlayer.position) || lowerInput === lowerLast;
+          break;
+        case "english-name":
+          correct = lowerInput === lowerEn;
+          break;
+      }
+
+      const correctSound = document.getElementById("correctSound");
+      const wrongSound = document.getElementById("wrongSound");
+
+      if (correct) {
+        correctSound.currentTime = 0;
+        correctSound.play();
+        document.getElementById("result").textContent = "정답입니다! ✅";
+      } else {
+        wrongSound.currentTime = 0;
+        wrongSound.play();
+        document.getElementById("result").textContent = `틀렸어요 ❌ (정답: ${getAnswerText()})`;
+      }
+    }
+
+    function getAnswerText() {
+      switch (currentQuiz) {
+        case "number":
+          return currentPlayer.number;
+        case "name-info":
+        case "name-last":
+          return currentPlayer.name;
+        case "nation":
+          return currentPlayer.nation;
+        case "position":
+          return currentPlayer.position;
+        case "english-name":
+          return currentPlayer.en;
+      }
+    }
+  </script>
+</body>
+</html>
